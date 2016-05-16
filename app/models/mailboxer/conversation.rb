@@ -40,6 +40,12 @@ class Mailboxer::Conversation < ActiveRecord::Base
     joins("LEFT JOIN mailboxer_spammers on mailboxer_spammers.conversation_id = mailboxer_conversations.id AND mailboxer_spammers.receiver_id = #{participant.id} AND mailboxer_spammers.receiver_type = '#{participant.class.base_class.to_s}'").
       where('mailboxer_spammers.id IS NULL')
   }
+  scope :between, lambda {|participant_one, participant_two|
+    joins("INNER JOIN (#{Mailboxer::Notification.recipient(participant_two).to_sql}) `participant_two_notifications` ON `participant_two_notifications`.`conversation_id` = `mailboxer_conversations`.`id` AND `participant_two_notifications`.`type` IN ('Mailboxer::Message')").
+        joins("INNER JOIN `mailboxer_receipts` ON `mailboxer_receipts`.`notification_id` = `participant_two_notifications`.`id` ").
+        merge(Mailboxer::Receipt.recipient(participant_one)).
+        order("mailboxer_conversations.updated_at DESC").uniq
+  }
 
   #Mark the conversation as read for one of the participants
   def mark_as_read(participant)
@@ -135,17 +141,17 @@ class Mailboxer::Conversation < ActiveRecord::Base
     receipts_for(participant).any?
   end
 
-	#Adds a new participant to the conversation
-	def add_participant(participant)
-		messages.each do |message|
+  #Adds a new participant to the conversation
+  def add_participant(participant)
+    messages.each do |message|
       Mailboxer::ReceiptBuilder.new({
         :notification => message,
         :receiver     => participant,
         :updated_at   => message.updated_at,
         :created_at   => message.created_at
       }).build.save
-		end
-	end
+    end
+  end
 
   #Returns true if the participant has at least one message of the conversation in spam
   def spam?(participant)
@@ -189,7 +195,7 @@ class Mailboxer::Conversation < ActiveRecord::Base
   end
 
   # Creates a opt out object
-  # because by default all particpants are opt in
+  # because by default all participants are opt in
   def opt_out(participant)
     return unless has_subscriber?(participant)
     opt_outs.create(:unsubscriber => participant)

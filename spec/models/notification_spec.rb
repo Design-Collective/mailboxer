@@ -11,8 +11,8 @@ describe Mailboxer::Notification do
   it { should validate_presence_of :subject }
   it { should validate_presence_of :body }
 
-  it { should ensure_length_of(:subject).is_at_most(Mailboxer.subject_max_length) }
-  it { should ensure_length_of(:body).is_at_most(Mailboxer.body_max_length) }
+  it { should validate_length_of(:subject).is_at_most(Mailboxer.subject_max_length) }
+  it { should validate_length_of(:body).is_at_most(Mailboxer.body_max_length) }
 
   it "should notify one user" do
     @entity1.notify("Subject", "Body")
@@ -44,6 +44,13 @@ describe Mailboxer::Notification do
     notification = @entity1.mailbox.receipts.first.notification
     notification.mark_as_read(@entity1)
     expect(notification).to be_is_read(@entity1)
+  end
+
+  it "should be able to specify a sender for a notification" do
+    @entity1.notify("Subject", "Body", nil, true, nil, true, @entity3)
+    expect(@entity1.mailbox.receipts.size).to eq 1
+    notification = @entity1.mailbox.receipts.first.notification
+    expect(notification.sender).to eq(@entity3)
   end
 
   it "should notify several users" do
@@ -97,6 +104,25 @@ describe Mailboxer::Notification do
     notification = @entity1.mailbox.notifications.first
     expect(notification.subject).to eq "Subject"
     expect(notification.body).to eq "Body"
+  end
+
+  it "should be able to specify a sender for a notification" do
+    Mailboxer::Notification.notify_all(@entity1,"Subject","Body", nil, true, nil, false, @entity3)
+
+    #Check getting ALL receipts
+    expect(@entity1.mailbox.receipts.size).to eq 1
+    receipt      = @entity1.mailbox.receipts.first
+    notification = receipt.notification
+    expect(notification.subject).to eq "Subject"
+    expect(notification.body).to eq "Body"
+    expect(notification.sender).to eq @entity3
+
+    #Check getting NOTIFICATION receipts only
+    expect(@entity1.mailbox.notifications.size).to eq 1
+    notification = @entity1.mailbox.notifications.first
+    expect(notification.subject).to eq "Subject"
+    expect(notification.body).to eq "Body"
+    expect(notification.sender).to eq @entity3
   end
 
   describe "scopes" do
