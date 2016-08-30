@@ -22,7 +22,7 @@ class Mailboxer::Message < Mailboxer::Notification
 
   #Delivers a Message. USE NOT RECOMENDED.
   #Use Mailboxer::Models::Message.send_message instead.
-  def deliver(reply = false, should_clean = true)
+  def deliver(reply = false, should_clean = true, action_type = nil)
     self.clean if should_clean
 
     #Receiver receipts
@@ -30,8 +30,12 @@ class Mailboxer::Message < Mailboxer::Notification
 
     #Sender receipt
     sender_receipt = build_receipt(sender, 'sentbox', true)
-
     temp_receipts = [sender_receipt] + receiver_receipts
+
+    # Adding Recipient Action
+    if action_type.present?
+      receiver_receipts.each { |record| record.update_attributes({ action_type: action_type }) }
+    end
 
     if temp_receipts.all?(&:valid?)
       temp_receipts.each(&:save!)
