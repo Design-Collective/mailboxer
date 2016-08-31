@@ -25,7 +25,7 @@ module Mailboxer
 
     def send_email(receipt)
       if Mailboxer.custom_deliver_proc
-        Mailboxer.custom_deliver_proc.call(mailer, mailable, receipt.receiver, receipt.action_type = nil)
+        Mailboxer.custom_deliver_proc.call(mailer, mailable, receipt.receiver, receipt.action_type)
       else
         default_send_email(receipt)
       end
